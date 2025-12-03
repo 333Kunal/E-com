@@ -15,11 +15,13 @@ app.use(cors());
 const authRoutes = require('./routes/authRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const productRoutes = require('./routes/productRoutes'); // 🆕 Product routes
+const orderRoutes = require('./routes/orderRoutes'); // 🆕 Order routes
 
 // Use routes
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/products', productRoutes); // 🆕 Product routes
+app.use('/api/orders', orderRoutes); // 🆕 Order routes
 
 // Test route
 app.get('/', (req, res) => {
