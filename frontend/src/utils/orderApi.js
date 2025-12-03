@@ -29,3 +29,30 @@ export const getOrderById = async (orderId) => {
   const response = await api.get(`/orders/${orderId}`);
   return response.data;
 };
+
+
+// utils/orderApi.js
+
+export const initiateUPIPayment = async (paymentData) => {
+  try {
+    const response = await fetch('/api/orders/initiate-upi-payment', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      },
+      body: JSON.stringify(paymentData)
+    });
+
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to initiate UPI payment');
+    }
+
+    return data;
+  } catch (error) {
+    console.error('UPI Payment Initiation Error:', error);
+    throw error;
+  }
+};

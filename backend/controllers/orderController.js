@@ -7,6 +7,8 @@ exports.validateStock = async (req, res) => {
   try {
     const { cartItems } = req.body;
 
+    console.log('📦 Validating stock for:', cartItems.length, 'items');
+
     // Check each item in cart
     const stockIssues = [];
 
@@ -74,6 +76,8 @@ exports.createOrder = async (req, res) => {
       totalPrice
     } = req.body;
 
+    console.log('📝 Creating order for user:', req.user.id);
+
     // Validate all fields are provided
     if (!orderItems || orderItems.length === 0) {
       return res.status(400).json({
@@ -126,6 +130,8 @@ exports.createOrder = async (req, res) => {
       totalPrice
     });
 
+    console.log('✅ Order created:', order._id);
+
     res.status(201).json({
       success: true,
       message: 'Order created successfully',
@@ -149,6 +155,8 @@ exports.verifyPayment = async (req, res) => {
     const { orderId } = req.params;
     const { transactionId, upiId } = req.body;
 
+    console.log('💳 Verifying payment for order:', orderId);
+
     // Find the order
     const order = await Order.findById(orderId).populate('orderItems.product');
 
@@ -169,7 +177,7 @@ exports.verifyPayment = async (req, res) => {
 
     // Simulate payment verification
     // In real app, you'd verify with UPI payment gateway
-    const paymentSuccess = transactionId && transactionId.length > 10;
+    const paymentSuccess = transactionId && transactionId.length >= 10;
 
     if (!paymentSuccess) {
       // Payment failed
@@ -199,6 +207,8 @@ exports.verifyPayment = async (req, res) => {
       product.stock -= item.quantity;
       await product.save();
 
+      console.log(`✅ Stock reduced for ${product.name}: ${item.quantity} units`);
+
       return product;
     });
 
@@ -214,6 +224,8 @@ exports.verifyPayment = async (req, res) => {
     };
     order.orderStatus = 'Confirmed';
     await order.save();
+
+    console.log('✅ Payment verified and order confirmed');
 
     res.status(200).json({
       success: true,

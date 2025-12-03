@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { useNavigate } from 'react-router-dom';
@@ -11,26 +12,57 @@ const Cart = () => {
     updateQuantity, 
     clearCart, 
     getCartTotal, 
-    getCartCount 
+    getCartCount,
+    isMaxQuantity,
+    getStockLeft
   } = useCart();
   const navigate = useNavigate();
+  const [showMenu, setShowMenu] = useState(false);
 
   const handleLogout = () => {
     logout();
     navigate('/login');
+    setShowMenu(false);
+  };
+
+  const handleDashboardClick = () => {
+    navigate('/dashboard');
+    setShowMenu(false);
+  };
+
+  const handleAdminClick = () => {
+    navigate('/admin');
+    setShowMenu(false);
+  };
+
+  const handleProductClick = () => {
+    navigate('/product');
+    setShowMenu(false);
   };
 
   const handleContinueShopping = () => {
     navigate('/dashboard');
+    setShowMenu(false);
   };
 
   const handleCheckout = () => {
-    // In a real app, this would navigate to checkout page
-    //alert('Proceeding to checkout... (This would be your checkout page)');
-     navigate('/checkout');
+    navigate('/checkout');
+    setShowMenu(false);
   };
 
   const isAdmin = user && user.role === 'admin';
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showMenu && !event.target.closest('.hamburger-menu-container')) {
+        setShowMenu(false);
+      }
+    };
+
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [showMenu]);
 
   return (
     <div className="cart-container">
@@ -49,20 +81,50 @@ const Cart = () => {
             <span className="logo-icon">🛍️</span>
             <span className="logo-text">E-Commerce</span>
           </div>
-          <div className="header-actions">
-            <button onClick={handleContinueShopping} className="continue-shopping-btn">
-              <span>🏠</span> Continue Shopping
+          
+          <div className="hamburger-menu-container">
+            <button 
+              onClick={() => setShowMenu(!showMenu)} 
+              className="hamburger-btn"
+            >
+              ☰
             </button>
-
-            {isAdmin && (
-              <button onClick={() => navigate('/admin')} className="admin-button">
-                <span>👑</span> Admin
-              </button>
+            
+            {showMenu && (
+              <div className="hamburger-dropdown">
+                <button 
+                  onClick={handleDashboardClick}
+                  className="dropdown-item"
+                >
+                  🏠 Dashboard
+                </button>
+                
+                {isAdmin && (
+                  <button 
+                    onClick={handleAdminClick}
+                    className="dropdown-item"
+                  >
+                    👑 Admin Panel
+                  </button>
+                )}
+                
+                {isAdmin && (
+                  <button 
+                    onClick={handleProductClick}
+                    className="dropdown-item"
+                  >
+                    📦 Products
+                  </button>
+                )}
+                
+                <button 
+                  onClick={handleLogout}
+                  className="dropdown-item"
+                >
+                  🚪 Logout
+                </button>
+              </div>
             )}
-
-            <button onClick={handleLogout} className="logout-button">
-              <span>🚪</span> Logout
-            </button>
           </div>
         </header>
 
@@ -95,50 +157,73 @@ const Cart = () => {
                 </div>
 
                 <div className="cart-items-list">
-                  {cartItems.map((item) => (
-                    <div key={item._id} className="cart-item">
-                      <div className="cart-item-image">
-                        <img src={item.image} alt={item.name} />
-                      </div>
+                  {cartItems.map((item) => {
+                    const maxStock = item.maxStock || item.stock || 0;
+                    const stockLeft = getStockLeft(item._id);
+                    const isMaxInCart = isMaxQuantity(item._id);
+                    
+                    return (
+                      <div key={item._id} className="cart-item">
+                        <div className="cart-item-image">
+                          <img src={item.image} alt={item.name} />
+                        </div>
 
-                      <div className="cart-item-details">
-                        <h3>{item.name}</h3>
-                        <p className="cart-item-category">{item.category}</p>
-                        <p className="cart-item-price">₹{item.price.toFixed(2)}</p>
-                      </div>
+                        <div className="cart-item-details">
+                          <h3>{item.name}</h3>
+                          <p className="cart-item-category">{item.category}</p>
+                          <p className="cart-item-price">₹{item.price.toFixed(2)}</p>
+                          
+                          <div className="cart-item-stock">
+                            <span className={`stock-status ${stockLeft === 0 ? 'out-of-stock' : 'in-stock'}`}>
+                              {stockLeft === 0 ? 'Out of Stock' : `${stockLeft} available`}
+                            </span>
+                            {isMaxInCart && (
+                              <span className="max-quantity-warning">
+                                ⚠️ Maximum quantity in cart
+                              </span>
+                            )}
+                          </div>
+                        </div>
 
-                      <div className="cart-item-quantity">
+                        <div className="cart-item-quantity">
+                          <button 
+                            onClick={() => updateQuantity(item._id, item.quantity - 1)}
+                            className="quantity-btn"
+                          >
+                            −
+                          </button>
+                          <span className="quantity-display">{item.quantity}</span>
+                          <button 
+                            onClick={() => updateQuantity(item._id, item.quantity + 1)}
+                            className="quantity-btn"
+                            disabled={isMaxInCart}
+                            title={isMaxInCart ? "Maximum quantity reached" : "Increase quantity"}
+                          >
+                            +
+                          </button>
+                          
+                          <div className="quantity-info">
+                            Max: {maxStock}
+                          </div>
+                        </div>
+
+                        <div className="cart-item-total">
+                          <span className="item-total-label">Total:</span>
+                          <span className="item-total-price">
+                            ₹{(item.price * item.quantity).toFixed(2)}
+                          </span>
+                        </div>
+
                         <button 
-                          onClick={() => updateQuantity(item._id, item.quantity - 1)}
-                          className="quantity-btn"
+                          onClick={() => removeFromCart(item._id)}
+                          className="remove-item-btn"
+                          title="Remove item"
                         >
-                          −
-                        </button>
-                        <span className="quantity-display">{item.quantity}</span>
-                        <button 
-                          onClick={() => updateQuantity(item._id, item.quantity + 1)}
-                          className="quantity-btn"
-                        >
-                          +
+                          🗑️
                         </button>
                       </div>
-
-                      <div className="cart-item-total">
-                        <span className="item-total-label">Total:</span>
-                        <span className="item-total-price">
-                          ₹{(item.price * item.quantity).toFixed(2)}
-                        </span>
-                      </div>
-
-                      <button 
-                        onClick={() => removeFromCart(item._id)}
-                        className="remove-item-btn"
-                        title="Remove item"
-                      >
-                        🗑️
-                      </button>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
@@ -147,7 +232,7 @@ const Cart = () => {
                 <h2>Order Summary</h2>
                 
                 <div className="summary-row">
-                  <span>Subtotal</span>
+                  <span>Subtotal ({getCartCount()} items)</span>
                   <span>₹{getCartTotal().toFixed(2)}</span>
                 </div>
 
@@ -179,6 +264,12 @@ const Cart = () => {
                     <span>🏦</span>
                     <span>📱</span>
                   </div>
+                </div>
+                
+                <div className="cart-actions">
+                  <button onClick={handleContinueShopping} className="continue-shopping-btn">
+                    ← Continue Shopping
+                  </button>
                 </div>
               </div>
             </div>

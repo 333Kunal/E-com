@@ -7,28 +7,38 @@ import './Dashboard.css';
 
 const Dashboard = () => {
   const { user, logout } = useAuth();
-  const { addToCart, getCartCount } = useCart();
+  const { 
+    addToCart, 
+    getCartCount, 
+    isMaxQuantity,
+    getItemQuantity,
+    isInCart 
+  } = useCart();
   const navigate = useNavigate();
   const [successMessage, setSuccessMessage] = useState('');
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
-    // 🆕 Hamburger menu state
   const [showMenu, setShowMenu] = useState(false);
 
   const handleLogout = () => {
     logout();
     navigate('/login');
+    setShowMenu(false);
   };
 
   const handleAdminClick = () => {
     navigate('/admin');
+    setShowMenu(false);
   };
+
   const handleProductClick = () => {
     navigate('/product');
+    setShowMenu(false);
   };
 
   const handleCartClick = () => {
     navigate('/cart');
+    setShowMenu(false);
   };
 
   // Check if user is admin
@@ -51,15 +61,41 @@ const Dashboard = () => {
     }
   };
 
-  // Handle add to cart
+  // Handle add to cart with stock validation
   const handleAddToCart = (product) => {
+    // Check if product is in stock
+    if (product.stock === 0) {
+      setSuccessMessage(`❌ ${product.name} is out of stock!`);
+      setTimeout(() => setSuccessMessage(''), 3000);
+      return;
+    }
+    
+    // Check if already at max quantity in cart
+    if (isMaxQuantity(product._id)) {
+      setSuccessMessage(`⚠️ Maximum quantity of ${product.name} already in cart!`);
+      setTimeout(() => setSuccessMessage(''), 3000);
+      return;
+    }
+    
     addToCart(product);
-    setSuccessMessage(`${product.name} added to cart!`);
+    setSuccessMessage(`✅ ${product.name} added to cart!`);
     
     setTimeout(() => {
       setSuccessMessage('');
     }, 3000);
   };
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showMenu && !event.target.closest('.hamburger-menu-container')) {
+        setShowMenu(false);
+      }
+    };
+
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [showMenu]);
 
   if (loading) {
     return (
@@ -84,7 +120,8 @@ const Dashboard = () => {
             <span className="logo-icon">🛍️</span>
             <span className="logo-text">E-Commerce</span>
           </div>
-                    <div className="hamburger-menu-container">
+          
+          <div className="hamburger-menu-container">
             <button 
               onClick={() => setShowMenu(!showMenu)} 
               className="hamburger-btn"
@@ -94,24 +131,31 @@ const Dashboard = () => {
             
             {showMenu && (
               <div className="hamburger-dropdown">
+                {isAdmin && (
+                  <button 
+                    onClick={handleAdminClick}
+                    className="dropdown-item"
+                  >
+                    👑 Admin Panel
+                  </button>
+                )}
+                
+                {isAdmin && (
+                  <button 
+                    onClick={handleProductClick}
+                    className="dropdown-item"
+                  >
+                    📦 Products
+                  </button>
+                )}
+                 
                 <button 
-                  onClick={handleAdminClick}
-                  className="dropdown-item"
-                >
-                  👑 Admin Panel
-                </button>
-                <button 
-                  onClick={handleProductClick}
-                  className="dropdown-item"
-                >
-                  📦 Products
-                </button>
-                 <button 
                   onClick={handleCartClick}
                   className="dropdown-item"
                 >
                   🛒 Cart <span className="cart-badge">{getCartCount()}</span>
                 </button>
+                
                 <button 
                   onClick={handleLogout}
                   className="dropdown-item"
@@ -121,30 +165,11 @@ const Dashboard = () => {
               </div>
             )}
           </div>
-          {/* <div className="header-actions">
-            <button onClick={handleCartClick} className="cart-button">
-              <span>🛒</span>
-              <span className="cart-text">Cart</span>
-              {getCartCount() > 0 && (
-                <span className="cart-badge">{getCartCount()}</span>
-              )}
-            </button>
-
-            {isAdmin && (
-              <button onClick={handleAdminClick} className="admin-button">
-                <span>👑</span> Admin Panel
-              </button>
-            )}
-
-            <button onClick={handleLogout} className="logout-button">
-              <span>🚪</span> Logout
-            </button>
-          </div> */}
         </header>
 
         {successMessage && (
-          <div className="success-notification">
-            ✅ {successMessage}
+          <div className={`success-notification ${successMessage.includes('❌') ? 'error' : successMessage.includes('⚠️') ? 'warning' : 'success'}`}>
+            {successMessage}
           </div>
         )}
 
@@ -173,38 +198,57 @@ const Dashboard = () => {
             </div>
           ) : (
             <div className="products-grid">
-              {products.map((product) => (
-                <div key={product._id} className="product-card">
-                  <div className="product-image-container">
-                    <img 
-                      src={product.image} 
-                      alt={product.name}
-                      className="product-image"
-                    />
-                    <span className="product-category">{product.category}</span>
-                    {product.stock === 0 && (
-                      <span className="out-of-stock-badge">Out of Stock</span>
-                    )}
-                  </div>
-                  
-                  <div className="product-info">
-                    <h3 className="product-name">{product.name}</h3>
-                    <p className="product-description">{product.description}</p>
+              {products.map((product) => {
+                const cartQuantity = getItemQuantity(product._id);
+                const stockLeft = product.stock - cartQuantity;
+                const isMaxInCart = cartQuantity >= product.stock;
+                const inCart = isInCart(product._id);
+                
+                return (
+                  <div key={product._id} className="product-card">
+                    <div className="product-image-container">
+                      <img 
+                        src={product.image} 
+                        alt={product.name}
+                        className="product-image"
+                      />
+                      <span className="product-category">{product.category}</span>
+                      {product.stock === 0 && (
+                        <span className="out-of-stock-badge">Out of Stock</span>
+                      )}
+                    </div>
                     
-                    <div className="product-footer">
-                      <span className="product-price">₹{product.price.toFixed(2)}</span>
-                      <button 
-                        onClick={() => handleAddToCart(product)}
-                        className="add-to-cart-btn"
-                        disabled={product.stock === 0}
-                      >
-                        <span>🛒</span> 
-                        {product.stock === 0 ? 'Out of Stock' : 'Add to Cart'}
-                      </button>
+                    <div className="product-info">
+                      <h3 className="product-name">{product.name}</h3>
+                      <p className="product-description">{product.description}</p>
+                      
+                      <div className="product-stock-info">
+                        <span className={`stock-badge ${product.stock === 0 ? 'out-of-stock' : 'in-stock'}`}>
+                          {product.stock === 0 ? 'Out of Stock' : `${stockLeft} available`}
+                        </span>
+                        {inCart && (
+                          <span className="cart-quantity-badge">
+                            {cartQuantity} in cart
+                          </span>
+                        )}
+                      </div>
+                      
+                      <div className="product-footer">
+                        <span className="product-price">₹{product.price.toFixed(2)}</span>
+                        <button 
+                          onClick={() => handleAddToCart(product)}
+                          className={`add-to-cart-btn ${product.stock === 0 || isMaxInCart ? 'disabled' : ''}`}
+                          disabled={product.stock === 0 || isMaxInCart}
+                          title={product.stock === 0 ? 'Out of Stock' : isMaxInCart ? 'Maximum quantity in cart' : 'Add to Cart'}
+                        >
+                          <span>🛒</span> 
+                          {product.stock === 0 ? 'Out of Stock' : isMaxInCart ? 'Max in Cart' : 'Add to Cart'}
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

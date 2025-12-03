@@ -125,7 +125,7 @@ const Checkout = () => {
 
   // Generate UPI payment link
   const generateUPILink = () => {
-    const merchantUPI = 'xyz@okaxis';
+    const merchantUPI = '8347631720@superyes';
     const amount = totalPrice.toFixed(2);
     const transactionNote = `Order ${currentOrder?._id}`;
     
