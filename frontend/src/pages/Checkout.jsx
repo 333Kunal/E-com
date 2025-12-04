@@ -5,7 +5,6 @@ import { validateStock, createOrder, verifyPayment } from '../utils/orderApi';
 import './Checkout.css';
 
 const Checkout = () => {
-  
   const { cartItems, getCartTotal, clearCart } = useCart();
   const navigate = useNavigate();
 
@@ -17,15 +16,11 @@ const Checkout = () => {
     country: 'India'
   });
 
+  const [upiId, setUpiId] = useState('');
+
   // UI state
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [showUPIModal, setShowUPIModal] = useState(false);
-  const [currentOrder, setCurrentOrder] = useState(null);
-
-  // UPI payment state
-  const [upiId, setUpiId] = useState('');
-  const [transactionId, setTransactionId] = useState('');
 
   // Calculate prices
   const itemsPrice = getCartTotal();
@@ -70,12 +65,32 @@ const Checkout = () => {
         totalPrice
       };
 
-      const result = await createOrder(orderData);
-      console.log('✅ Order created:', result.order._id);
+      const orderResult = await createOrder(orderData);
+      console.log('✅ Order created:', orderResult.order._id);
 
-      setCurrentOrder(result.order);
-      setShowUPIModal(true);
+      // STEP 3: Simulate UPI payment and verify
+      console.log('💳 Step 3: Processing UPI payment...');
+      
+      // Generate a mock transaction ID (in real app, this comes from UPI gateway)
+      const transactionId = `UPI${Date.now()}${Math.floor(Math.random() * 10000)}`;
+
+      const paymentData = {
+        transactionId,
+        upiId
+      };
+
+      await verifyPayment(orderResult.order._id, paymentData);
+      console.log('✅ Payment verified!');
+
+      // STEP 4: Clear cart and navigate to orders
+      clearCart();
       setLoading(false);
+      
+      // Show success message
+      alert('✅ Order placed successfully!');
+      
+      // Navigate to orders page
+      navigate('/orders');
 
     } catch (error) {
       console.error('❌ Checkout Error:', error);
@@ -91,46 +106,6 @@ const Checkout = () => {
         setError(`Stock issues:\n${issueMessages}`);
       }
     }
-  };
-
-  // Handle Payment
-  const handlePayment = async (e) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-
-    try {
-      // STEP 3: Verify payment
-      console.log('💳 Step 3: Verifying payment...');
-      const paymentData = {
-        transactionId,
-        upiId
-      };
-
-      await verifyPayment(currentOrder._id, paymentData);
-      console.log('✅ Payment verified!');
-
-      // STEP 4: Clear cart and show success
-      clearCart();
-      navigate('/order-success', { 
-        state: { orderId: currentOrder._id } 
-      });
-
-    } catch (error) {
-      console.error('❌ Payment Error:', error);
-      setError(error.response?.data?.message || 'Payment verification failed');
-      setLoading(false);
-    }
-  };
-
-  // Generate UPI payment link
-  const generateUPILink = () => {
-    const merchantUPI = '8347631720@superyes';
-    const amount = totalPrice.toFixed(2);
-    const transactionNote = `Order ${currentOrder?._id}`;
-    
-    // UPI URI format
-    return `upi://pay?pa=${merchantUPI}&pn=E-Commerce&am=${amount}&cu=INR&tn=${encodeURIComponent(transactionNote)}`;
   };
 
   if (cartItems.length === 0) {
@@ -168,56 +143,100 @@ const Checkout = () => {
         )}
 
         <div className="checkout-layout">
-          {/* Shipping Form */}
+          {/* Checkout Form */}
           <div className="shipping-section">
-            <h2>📍 Shipping Address</h2>
+            <h2>📦 Complete Your Order</h2>
             <form onSubmit={handlePlaceOrder} className="shipping-form">
-              <div className="form-group">
-                <label>Full Address *</label>
-                <textarea
-                  name="address"
-                  value={shippingAddress.address}
-                  onChange={handleInputChange}
-                  required
-                  placeholder="123 Main Street, Apartment 4B"
-                  rows="3"
-                ></textarea>
-              </div>
-
-              <div className="form-row">
+              {/* Shipping Address Section */}
+              <div className="form-section">
+                <h3>📍 Shipping Address</h3>
+                
                 <div className="form-group">
-                  <label>City *</label>
-                  <input
-                    type="text"
-                    name="city"
-                    value={shippingAddress.city}
+                  <label>Full Address *</label>
+                  <textarea
+                    name="address"
+                    value={shippingAddress.address}
                     onChange={handleInputChange}
                     required
-                    placeholder="Mumbai"
-                  />
+                    placeholder="123 Main Street, Apartment 4B"
+                    rows="3"
+                  ></textarea>
+                </div>
+
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>City *</label>
+                    <input
+                      type="text"
+                      name="city"
+                      value={shippingAddress.city}
+                      onChange={handleInputChange}
+                      required
+                      placeholder="Mumbai"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Postal Code *</label>
+                    <input
+                      type="text"
+                      name="postalCode"
+                      value={shippingAddress.postalCode}
+                      onChange={handleInputChange}
+                      required
+                      placeholder="400001"
+                    />
+                  </div>
                 </div>
 
                 <div className="form-group">
-                  <label>Postal Code *</label>
+                  <label>Country</label>
                   <input
                     type="text"
-                    name="postalCode"
-                    value={shippingAddress.postalCode}
-                    onChange={handleInputChange}
-                    required
-                    placeholder="400001"
+                    name="country"
+                    value={shippingAddress.country}
+                    readOnly
                   />
                 </div>
               </div>
 
-              <div className="form-group">
-                <label>Country</label>
-                <input
-                  type="text"
-                  name="country"
-                  value={shippingAddress.country}
-                  readOnly
-                />
+              {/* Payment Section */}
+              <div className="form-section">
+                <h3>💳 Payment Details</h3>
+                
+                <div className="payment-method-info">
+                  <div className="upi-info-box">
+                    <span className="upi-icon">📱</span>
+                    <div>
+                      <strong>Pay to UPI ID:</strong>
+                      <p className="merchant-upi">8347631720@superyes</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label>Your UPI ID *</label>
+                  <input
+                    type="text"
+                    value={upiId}
+                    onChange={(e) => setUpiId(e.target.value)}
+                    required
+                    placeholder="yourname@paytm"
+                  />
+                  <small className="form-hint">
+                    Enter your UPI ID (e.g., yourname@paytm, yourname@phonepe)
+                  </small>
+                </div>
+
+                <div className="payment-instructions">
+                  <h4>💡 Payment Instructions:</h4>
+                  <ol>
+                    <li>Open any UPI app (PhonePe, Paytm, Google Pay)</li>
+                    <li>Send ₹{totalPrice.toFixed(2)} to <strong>xyz@okaxis</strong></li>
+                    <li>Enter your UPI ID above</li>
+                    <li>Click "Place Order" below</li>
+                  </ol>
+                </div>
               </div>
 
               <button 
@@ -225,7 +244,14 @@ const Checkout = () => {
                 className="place-order-btn"
                 disabled={loading}
               >
-                {loading ? 'Processing...' : '💳 Proceed to Payment'}
+                {loading ? (
+                  <>
+                    <span className="spinner"></span>
+                    Processing Payment...
+                  </>
+                ) : (
+                  '🛍️ Place Order'
+                )}
               </button>
             </form>
           </div>
@@ -274,108 +300,9 @@ const Checkout = () => {
                 <span>₹{totalPrice.toFixed(2)}</span>
               </div>
             </div>
-
-            <div className="payment-info">
-              <h3>💳 Payment Method</h3>
-              <div className="payment-method-selected">
-                <span className="upi-icon">📱</span>
-                <div>
-                  <strong>UPI Payment</strong>
-                  <p>Pay using any UPI app</p>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>
-
-      {/* UPI Payment Modal */}
-      {showUPIModal && (
-        <div className="modal-overlay">
-          <div className="modal-content upi-modal">
-            <div className="modal-header">
-              <h2>💳 UPI Payment</h2>
-            </div>
-
-            <div className="upi-payment-content">
-              <div className="upi-qr-section">
-                <h3>Scan QR Code</h3>
-                <div className="qr-code-placeholder">
-                  {/* In production, use a library like qrcode.react */}
-                  <div className="qr-mock">
-                    <p>📱</p>
-                    <p>Scan with any UPI app</p>
-                  </div>
-                </div>
-                <p className="upi-id">UPI ID: 8347631720@superyes</p>
-                <p className="amount">Amount: ₹{totalPrice.toFixed(2)}</p>
-              </div>
-
-              <div className="upi-or">OR</div>
-
-              <div className="upi-link-section">
-                <h3>Pay with UPI App</h3>
-                <a 
-                  href={generateUPILink()} 
-                  className="upi-pay-btn"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  📱 Open UPI App
-                </a>
-              </div>
-
-              <div className="payment-verification-form">
-                <h3>After Payment</h3>
-                <p>Enter your UPI transaction details:</p>
-
-                <form onSubmit={handlePayment}>
-                  <div className="form-group">
-                    <label>UPI ID (Your ID) *</label>
-                    <input
-                      type="text"
-                      value={upiId}
-                      onChange={(e) => setUpiId(e.target.value)}
-                      required
-                      placeholder="yourname@paytm"
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label>Transaction ID / UTR Number *</label>
-                    <input
-                      type="text"
-                      value={transactionId}
-                      onChange={(e) => setTransactionId(e.target.value)}
-                      required
-                      placeholder="Enter 12-digit transaction ID"
-                      minLength={12}
-                    />
-                  </div>
-
-                  <div className="form-actions">
-                    <button 
-                      type="button" 
-                      onClick={() => setShowUPIModal(false)}
-                      className="btn-secondary"
-                      disabled={loading}
-                    >
-                      Cancel
-                    </button>
-                    <button 
-                      type="submit" 
-                      className="btn-primary"
-                      disabled={loading}
-                    >
-                      {loading ? 'Verifying...' : 'Verify Payment'}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

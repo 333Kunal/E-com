@@ -8,6 +8,7 @@ import Product from './pages/Product';
 import Cart from './pages/Cart'; // 🆕 Import Cart page
 import Checkout from './pages/Checkout'; // 🆕
 import OrderSuccess from './pages/OrderSuccess'; // 🆕
+import Orders from './pages/Orders';
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -147,6 +148,15 @@ function App() {
                 </ProtectedRoute>
               }
             />
+            {/* 🆕 Orders Route */}
+              <Route
+              path="/orders"
+              element={
+              <ProtectedRoute>
+              <Orders />
+              </ProtectedRoute>
+              }
+              />
             <Route path="/" element={<Navigate to="/login" />} />
           </Routes>
         </CartProvider>

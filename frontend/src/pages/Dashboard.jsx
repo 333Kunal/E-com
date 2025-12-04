@@ -40,6 +40,10 @@ const Dashboard = () => {
     navigate('/cart');
     setShowMenu(false);
   };
+    const handleOrderClick = () => {
+    navigate('/orders');
+    setShowMenu(false);
+  };
 
   // Check if user is admin
   const isAdmin = user && user.role === 'admin';
@@ -146,6 +150,14 @@ const Dashboard = () => {
                     className="dropdown-item"
                   >
                     📦 Products
+                  </button>
+                )}
+                { (
+                  <button 
+                    onClick={handleOrderClick}
+                    className="dropdown-item"
+                  >
+                    🚚 My Orders
                   </button>
                 )}
                  
